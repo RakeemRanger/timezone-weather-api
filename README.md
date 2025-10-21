@@ -1,39 +1,25 @@
 # Timezone Weather API
 
-A production-ready FastAPI application that combines timezone information with weather data, featuring witty weather messages, 5-day forecasts, caching, and comprehensive error handling.
+A FastAPI-based REST API that provides timezone information and weather data for locations worldwide.
 
 ## Features
 
-- 🌍 Timezone information for any location
-- 🌤️ Current weather data with humorous messages
-- 📅 5-day weather forecast with witty commentary
-- 💬 Context-aware weather jokes and messages
-- 🔄 Redis caching for improved performance
-- 🛡️ Rate limiting to prevent API abuse
-- 🔐 CORS support for web applications
-- 📝 Comprehensive logging and monitoring
-- ✅ Input validation with Pydantic
-- 🧪 Unit and integration tests
-- 📚 Auto-generated OpenAPI documentation
+- Get timezone information for any location
+- Fetch current weather data
+- Combined endpoint for timezone and weather in a single request
+- Caching for improved performance
+- Comprehensive error handling
+- Docker support for easy deployment
 
-## Weather Message Examples
-
-- **Rainy**: "You'll regret not wearing a coat!" or "Pack an umbrella unless you enjoy looking like a drowned rat"
-- **Sunny**: "Time to blind everyone with your pale legs!" or "Don't forget sunscreen unless you want to look like a lobster"
-- **Cloudy**: "Perfect weather for brooding dramatically" or "Nature's soft lighting - Instagram ready!"
-- **Snow**: "Winter wonderland or frozen nightmare? You decide!" or "Time to build a snowman or stay inside forever"
-- **Hot**: "It's so hot, eggs are frying on the sidewalk" or "Sweat is just your body crying"
-- **Cold**: "Colder than your ex's heart" or "All the layers! ALL OF THEM!"
-- **Windy**: "Bad hair day guaranteed" or "Your umbrella doesn't stand a chance"
-- **Thunderstorm**: "Thor is angry today" or "Maybe stay inside and catch up on Netflix?"
-
-## Prerequisites
+## Requirements
 
 - Python 3.9+
-- Redis Server
-- OpenWeatherMap API Key (get free key at https://openweathermap.org/api)
+- Docker (optional)
+- OpenWeatherMap API key (for weather endpoints)
 
 ## Installation
+
+### Local Development
 
 1. Clone the repository:
 ```bash
@@ -41,7 +27,7 @@ git clone <repository-url>
 cd timezone-weather-api
 ```
 
-2. Create and activate virtual environment:
+2. Create a virtual environment:
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -54,329 +40,428 @@ pip install -r requirements.txt
 
 4. Set up environment variables:
 ```bash
-cp .env.example .env
-# Edit .env with your OpenWeatherMap API key
+export OPENWEATHER_API_KEY=your_api_key_here
 ```
 
-5. Start Redis (using Docker):
+5. Run the application:
 ```bash
-docker run -d -p 6379:6379 redis:alpine
+uvicorn app.main:app --reload
 ```
 
-## Running the Application
+### Docker Deployment
 
-### Development
+1. Build and run with Docker Compose:
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+docker-compose up --build
 ```
 
-### Production
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
-```
+The API will be available at `http://localhost:8000`
 
 ## API Documentation
 
-Once running, visit:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-- OpenAPI JSON: http://localhost:8000/openapi.json
+Once the application is running, visit:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
 
-## API Endpoints
+## Usage Examples
 
-### Health Check
-```
-GET /health
-```
+### 1. Get Timezone Information
 
-Returns API health status and Redis connection status.
+Retrieve timezone information for a specific location.
 
-### Get Timezone Information
-```
-GET /api/v1/timezone/{timezone}
-```
+**Endpoint:** `GET /api/v1/timezone`
 
-Get timezone information for a specific timezone.
+**Parameters:**
+- `location` (required): City name, coordinates, or address
 
-**Path Parameters:**
-- `timezone`: Timezone name (e.g., "America/New_York", "Europe/London")
-
-**Example:**
+**Example Request:**
 ```bash
-curl http://localhost:8000/api/v1/timezone/America/New_York
+curl "http://localhost:8000/api/v1/timezone?location=New%20York"
 ```
 
-**Response:**
+**Example Response:**
 ```json
 {
+  "location": "New York",
   "timezone": "America/New_York",
-  "current_time": "2024-01-15T10:30:00-05:00",
   "utc_offset": "-05:00",
+  "current_time": "2024-01-15T14:30:00-05:00",
   "is_dst": false,
-  "abbreviation": "EST"
+  "coordinates": {
+    "latitude": 40.7128,
+    "longitude": -74.0060
+  }
 }
 ```
 
-### Get Current Weather
-```
-GET /api/v1/weather/current
-```
-
-Get current weather data with a witty message for a specific location.
-
-**Query Parameters:**
-- `city`: City name (required)
-- `country_code`: ISO 3166 country code (optional, e.g., "US", "GB")
-- `units`: Temperature units - "metric" (Celsius) or "imperial" (Fahrenheit), default: "metric"
-
-**Example:**
+**Another Example with Coordinates:**
 ```bash
-curl "http://localhost:8000/api/v1/weather/current?city=London&country_code=GB&units=metric"
+curl "http://localhost:8000/api/v1/timezone?location=51.5074,-0.1278"
 ```
 
 **Response:**
 ```json
 {
-  "location": "London, GB",
-  "temperature": 12.5,
-  "feels_like": 10.2,
-  "humidity": 76,
-  "description": "light rain",
-  "condition": "Rain",
-  "wind_speed": 5.5,
-  "timestamp": "2024-01-15T15:30:00Z",
-  "units": "metric",
-  "witty_message": "You'll regret not wearing a coat!"
+  "location": "51.5074,-0.1278",
+  "timezone": "Europe/London",
+  "utc_offset": "+00:00",
+  "current_time": "2024-01-15T19:30:00+00:00",
+  "is_dst": false,
+  "coordinates": {
+    "latitude": 51.5074,
+    "longitude": -0.1278
+  }
 }
 ```
 
-### Get 5-Day Weather Forecast
-```
-GET /api/v1/weather/forecast
-```
+### 2. Get Weather Information
 
-Get 5-day weather forecast with witty messages for each day.
+Retrieve current weather data for a location.
 
-**Query Parameters:**
-- `city`: City name (required)
-- `country_code`: ISO 3166 country code (optional)
-- `units`: Temperature units - "metric" or "imperial", default: "metric"
+**Endpoint:** `GET /api/v1/weather`
 
-**Example:**
+**Parameters:**
+- `location` (required): City name or coordinates
+- `units` (optional): `metric` (default), `imperial`, or `standard`
+
+**Example Request (Metric):**
 ```bash
-curl "http://localhost:8000/api/v1/weather/forecast?city=New%20York&country_code=US&units=imperial"
+curl "http://localhost:8000/api/v1/weather?location=London&units=metric"
+```
+
+**Example Response:**
+```json
+{
+  "location": "London",
+  "coordinates": {
+    "latitude": 51.5074,
+    "longitude": -0.1278
+  },
+  "temperature": {
+    "current": 12.5,
+    "feels_like": 11.2,
+    "min": 10.0,
+    "max": 14.0,
+    "unit": "celsius"
+  },
+  "conditions": {
+    "main": "Clouds",
+    "description": "overcast clouds",
+    "icon": "04d"
+  },
+  "humidity": 75,
+  "pressure": 1013,
+  "wind": {
+    "speed": 5.2,
+    "direction": 230,
+    "unit": "m/s"
+  },
+  "visibility": 10000,
+  "timestamp": "2024-01-15T19:30:00Z"
+}
+```
+
+**Example Request (Imperial):**
+```bash
+curl "http://localhost:8000/api/v1/weather?location=Los%20Angeles&units=imperial"
 ```
 
 **Response:**
 ```json
 {
-  "location": "New York, US",
-  "units": "imperial",
-  "forecast": [
-    {
-      "date": "2024-01-15",
-      "temperature": {
-        "min": 32.5,
-        "max": 45.2,
-        "avg": 38.8
-      },
-      "description": "clear sky",
-      "condition": "Clear",
-      "humidity": 65,
-      "wind_speed": 8.5,
-      "witty_message": "Time to blind everyone with your pale legs!"
+  "location": "Los Angeles",
+  "coordinates": {
+    "latitude": 34.0522,
+    "longitude": -118.2437
+  },
+  "temperature": {
+    "current": 68.5,
+    "feels_like": 67.8,
+    "min": 65.0,
+    "max": 72.0,
+    "unit": "fahrenheit"
+  },
+  "conditions": {
+    "main": "Clear",
+    "description": "clear sky",
+    "icon": "01d"
+  },
+  "humidity": 45,
+  "pressure": 1015,
+  "wind": {
+    "speed": 8.5,
+    "direction": 270,
+    "unit": "mph"
+  },
+  "visibility": 10000,
+  "timestamp": "2024-01-15T11:30:00Z"
+}
+```
+
+### 3. Get Combined Timezone and Weather Information
+
+Retrieve both timezone and weather data in a single request.
+
+**Endpoint:** `GET /api/v1/combined`
+
+**Parameters:**
+- `location` (required): City name or coordinates
+- `units` (optional): `metric` (default), `imperial`, or `standard`
+
+**Example Request:**
+```bash
+curl "http://localhost:8000/api/v1/combined?location=Tokyo&units=metric"
+```
+
+**Example Response:**
+```json
+{
+  "location": "Tokyo",
+  "timezone": {
+    "timezone": "Asia/Tokyo",
+    "utc_offset": "+09:00",
+    "current_time": "2024-01-16T04:30:00+09:00",
+    "is_dst": false,
+    "coordinates": {
+      "latitude": 35.6762,
+      "longitude": 139.6503
+    }
+  },
+  "weather": {
+    "coordinates": {
+      "latitude": 35.6762,
+      "longitude": 139.6503
     },
+    "temperature": {
+      "current": 8.5,
+      "feels_like": 6.2,
+      "min": 6.0,
+      "max": 10.0,
+      "unit": "celsius"
+    },
+    "conditions": {
+      "main": "Clear",
+      "description": "clear sky",
+      "icon": "01n"
+    },
+    "humidity": 55,
+    "pressure": 1020,
+    "wind": {
+      "speed": 3.5,
+      "direction": 180,
+      "unit": "m/s"
+    },
+    "visibility": 10000,
+    "timestamp": "2024-01-15T19:30:00Z"
+  },
+  "local_time": "2024-01-16T04:30:00+09:00"
+}
+```
+
+### 4. Health Check
+
+Check if the API is running.
+
+**Endpoint:** `GET /health`
+
+**Example Request:**
+```bash
+curl "http://localhost:8000/health"
+```
+
+**Example Response:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2024-01-15T19:30:00Z"
+}
+```
+
+### Error Responses
+
+The API returns structured error responses:
+
+**Example - Invalid Location:**
+```bash
+curl "http://localhost:8000/api/v1/timezone?location=InvalidLocationXYZ123"
+```
+
+**Response (404):**
+```json
+{
+  "detail": "Location not found: InvalidLocationXYZ123"
+}
+```
+
+**Example - Missing Required Parameter:**
+```bash
+curl "http://localhost:8000/api/v1/weather"
+```
+
+**Response (422):**
+```json
+{
+  "detail": [
     {
-      "date": "2024-01-16",
-      "temperature": {
-        "min": 28.3,
-        "max": 38.7,
-        "avg": 33.5
-      },
-      "description": "light snow",
-      "condition": "Snow",
-      "humidity": 78,
-      "wind_speed": 12.3,
-      "witty_message": "Winter wonderland or frozen nightmare? You decide!"
+      "loc": ["query", "location"],
+      "msg": "field required",
+      "type": "value_error.missing"
     }
   ]
 }
 ```
 
-### Combined Timezone and Weather
-```
-GET /api/v1/timezone-weather
-```
-
-Get both timezone information and current weather for a location.
-
-**Query Parameters:**
-- `city`: City name (required)
-- `timezone`: Timezone name (required)
-- `country_code`: ISO 3166 country code (optional)
-- `units`: Temperature units, default: "metric"
-
-**Example:**
+**Example - Invalid API Key:**
 ```bash
-curl "http://localhost:8000/api/v1/timezone-weather?city=Tokyo&timezone=Asia/Tokyo&country_code=JP"
+curl "http://localhost:8000/api/v1/weather?location=Paris"
 ```
 
-**Response:**
+**Response (500):**
 ```json
 {
-  "timezone": {
-    "timezone": "Asia/Tokyo",
-    "current_time": "2024-01-16T00:30:00+09:00",
-    "utc_offset": "+09:00",
-    "is_dst": false,
-    "abbreviation": "JST"
-  },
-  "weather": {
-    "location": "Tokyo, JP",
-    "temperature": 8.5,
-    "feels_like": 6.2,
-    "humidity": 62,
-    "description": "few clouds",
-    "condition": "Clouds",
-    "wind_speed": 3.5,
-    "timestamp": "2024-01-15T15:30:00Z",
-    "units": "metric",
-    "witty_message": "Perfect weather for brooding dramatically"
-  }
+  "detail": "Weather service error: Invalid API key"
 }
 ```
 
-## Weather Conditions
+## Python Client Example
 
-The API recognizes the following weather conditions and provides appropriate witty messages:
+Here's how to use the API with Python's `requests` library:
 
-- **Rain**: Rainy weather messages
-- **Clear**: Sunny weather messages
-- **Clouds**: Cloudy weather messages
-- **Snow**: Snow weather messages
-- **Thunderstorm**: Thunderstorm messages
-- **Drizzle**: Light rain messages
-- **Mist/Fog/Haze**: Cloudy weather messages
+```python
+import requests
 
-Additional modifiers based on temperature:
-- **Hot** (>30°C / 86°F): Hot weather messages
-- **Cold** (<5°C / 41°F): Cold weather messages
+BASE_URL = "http://localhost:8000"
 
-Additional modifiers based on wind:
-- **Windy** (>10 m/s): Windy weather messages
+# Get timezone information
+response = requests.get(f"{BASE_URL}/api/v1/timezone", params={"location": "Paris"})
+timezone_data = response.json()
+print(f"Timezone: {timezone_data['timezone']}")
+print(f"Current time: {timezone_data['current_time']}")
 
-## Testing
+# Get weather information
+response = requests.get(f"{BASE_URL}/api/v1/weather", params={
+    "location": "Paris",
+    "units": "metric"
+})
+weather_data = response.json()
+print(f"Temperature: {weather_data['temperature']['current']}°C")
+print(f"Conditions: {weather_data['conditions']['description']}")
 
-Run tests:
+# Get combined information
+response = requests.get(f"{BASE_URL}/api/v1/combined", params={
+    "location": "Paris",
+    "units": "metric"
+})
+combined_data = response.json()
+print(f"Location: {combined_data['location']}")
+print(f"Local time: {combined_data['local_time']}")
+print(f"Temperature: {combined_data['weather']['temperature']['current']}°C")
+```
+
+## JavaScript/Node.js Client Example
+
+```javascript
+const axios = require('axios');
+
+const BASE_URL = 'http://localhost:8000';
+
+async function getTimezone(location) {
+  try {
+    const response = await axios.get(`${BASE_URL}/api/v1/timezone`, {
+      params: { location }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error:', error.response.data);
+  }
+}
+
+async function getWeather(location, units = 'metric') {
+  try {
+    const response = await axios.get(`${BASE_URL}/api/v1/weather`, {
+      params: { location, units }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error:', error.response.data);
+  }
+}
+
+async function getCombined(location, units = 'metric') {
+  try {
+    const response = await axios.get(`${BASE_URL}/api/v1/combined`, {
+      params: { location, units }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error:', error.response.data);
+  }
+}
+
+// Usage
+(async () => {
+  const timezone = await getTimezone('Berlin');
+  console.log('Timezone:', timezone.timezone);
+  
+  const weather = await getWeather('Berlin', 'metric');
+  console.log('Temperature:', weather.temperature.current);
+  
+  const combined = await getCombined('Berlin');
+  console.log('Local time:', combined.local_time);
+})();
+```
+
+## Rate Limiting & Caching
+
+The API implements caching to reduce external API calls and improve response times:
+- Timezone data is cached for 24 hours
+- Weather data is cached for 10 minutes
+- Cache is stored in-memory (Redis support can be added)
+
+## Development
+
+### Running Tests
+
 ```bash
+# Install dev dependencies
+pip install -r requirements-dev.txt
+
+# Run all tests
 pytest
+
+# Run with coverage
+pytest --cov=app
+
+# Run specific test file
+pytest tests/api/test_weather.py
 ```
 
-With coverage:
-```bash
-pytest --cov=app --cov-report=html
-```
+### Code Style
 
-Run specific test file:
-```bash
-pytest tests/api/test_weather.py -v
-```
+The project uses:
+- Black for code formatting
+- Flake8 for linting
+- MyPy for type checking
 
-## Code Quality
-
-Format code:
 ```bash
 black app/
-isort app/
-```
-
-Lint:
-```bash
 flake8 app/
 mypy app/
 ```
 
-Run pre-commit hooks:
-```bash
-pre-commit run --all-files
-```
-
-## Docker Deployment
-
-Build image:
-```bash
-docker build -t timezone-weather-api .
-```
-
-Run with docker-compose:
-```bash
-docker-compose up -d
-```
-
 ## Environment Variables
 
-See `.env.example` for all available configuration options.
-
-### Required Variables
-- `WEATHER_API_KEY`: Your OpenWeatherMap API key
-
-### Optional Variables
-- `REDIS_HOST`: Redis host (default: localhost)
-- `REDIS_PORT`: Redis port (default: 6379)
-- `CACHE_TTL`: Cache time-to-live in seconds (default: 1800)
-- `RATE_LIMIT_PER_MINUTE`: Rate limit per minute (default: 60)
-- `LOG_LEVEL`: Logging level (default: INFO)
-
-## Architecture
-
-```
-timezone-weather-api/
-├── app/
-│   ├── api/
-│   │   └── v1/
-│   │       ├── timezone.py      # Timezone endpoints
-│   │       ├── weather.py       # Weather endpoints
-│   │       └── combined.py      # Combined endpoints
-│   ├── core/
-│   │   ├── config.py            # Configuration settings
-│   │   └── logging_config.py    # Logging configuration
-│   ├── models/                  # Database models (if needed)
-│   ├── schemas/
-│   │   ├── timezone.py          # Timezone schemas
-│   │   └── weather.py           # Weather schemas
-│   ├── services/
-│   │   ├── cache.py             # Redis cache service
-│   │   ├── timezone_service.py  # Timezone logic
-│   │   ├── weather_client.py    # Weather API client
-│   │   └── weather_messages.py  # Witty message generator
-│   ├── utils/                   # Utility functions
-│   └── main.py                  # FastAPI application
-├── tests/                       # Test suite
-├── .env.example                 # Environment variables template
-├── requirements.txt             # Production dependencies
-├── Dockerfile                   # Docker configuration
-└── docker-compose.yml           # Docker Compose configuration
-```
-
-## Popular City Examples
-
-Try these popular cities:
-- New York, US (America/New_York)
-- London, GB (Europe/London)
-- Tokyo, JP (Asia/Tokyo)
-- Sydney, AU (Australia/Sydney)
-- Paris, FR (Europe/Paris)
-- Dubai, AE (Asia/Dubai)
-- Singapore, SG (Asia/Singapore)
+| Variable | Description | Required | Default |
+|----------|-------------|----------|----------|
+| `OPENWEATHER_API_KEY` | OpenWeatherMap API key | Yes | - |
+| `CACHE_TTL_TIMEZONE` | Timezone cache TTL (seconds) | No | 86400 |
+| `CACHE_TTL_WEATHER` | Weather cache TTL (seconds) | No | 600 |
+| `LOG_LEVEL` | Logging level | No | INFO |
 
 ## License
 
-MIT
+MIT License
 
 ## Contributing
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
-## Support
-
-For issues and questions, please open an issue on GitHub.
+Contributions are welcome! Please feel free to submit a Pull Request.
